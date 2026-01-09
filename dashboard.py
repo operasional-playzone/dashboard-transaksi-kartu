@@ -130,9 +130,22 @@ def load_data_mesin():
         }
         df['Nama_Bulan'] = df['Bulan_Urut'].map(map_bulan_indo)
 
+        # --- CLEANING STRING ---
         for c in ['Center', 'GT_FINAL', 'Kategori Game']:
             if c in df.columns:
                 df[c] = df[c].astype(str).str.strip()
+
+        # --- FILTER EXCLUSION (Hapus Data Kiddieland) ---
+        # Data ini dihapus sebelum masuk ke proses apapun di dashboard
+        exclusions = [
+            'KIDDIE LAND', 
+            'KIDDIE LAND 1 JAM', 
+            'KIDDIELAND MINI', 
+            'KIDDIELAND SEPUASNYA',
+            'KIDDIE ZONE 1 JAM'
+        ]
+        df = df[~df['GT_FINAL'].isin(exclusions)]
+
         return df
     except FileNotFoundError:
         return None
