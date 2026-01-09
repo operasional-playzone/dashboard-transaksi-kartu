@@ -2,3 +2,5 @@ dashboard-kartu-env/
 __pycache__/
 *.pyc
 .env
+raw_data/
+data-mesin/
