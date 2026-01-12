@@ -288,19 +288,107 @@ with tab_kartu_main:
             else:
                 st.info("Data 2024/2025 tidak tersedia.")
 
+       # --- SUBTAB 3 (KARTU) ---
         with subtab3:
             st.subheader("Peringkat Performa")
+            
+            # 1. Selector Metrik (Omset vs Frekuensi)
+            rank_mode = st.radio(
+                "Urutkan Peringkat Berdasarkan:",
+                ['Total Omset', 'Jumlah Transaksi'],
+                horizontal=True,
+                key='rank_mode_kartu'
+            )
+
+            # Tentukan Kolom & Formatter berdasarkan pilihan
+            if rank_mode == 'Total Omset':
+                col_rank = 'Omset_Paket'
+                fmt_func = format_singkat_id
+                color_top = '#2980b9' # Biru
+            else:
+                col_rank = 'Frekuensi'
+                fmt_func = lambda x: f"{x:,.0f}".replace(',', '.')
+                color_top = '#8e44ad' # Ungu
+
+            st.markdown("---")
+
+            # --- BAGIAN 1: KATEGORI PAKET ---
+            st.markdown(f"#### 📦 Analisis Kategori Paket (by {rank_mode})")
+            
+            # Agregasi Data Kategori
+            df_cat = df_filt.groupby('Kategori_Paket')[col_rank].sum().reset_index()
+            
             c1, c2 = st.columns(2)
-            with c1:
-                top_pkt = df_filt.groupby('Paket')['Omset_Paket'].sum().reset_index().sort_values('Omset_Paket').tail(10)
-                top_pkt['Label'] = top_pkt['Omset_Paket'].apply(format_singkat_id)
-                fig_p = px.bar(top_pkt, x='Omset_Paket', y='Paket', orientation='h', text='Label', title="Top 10 Paket")
+            
+            with c1: # Top Kategori
+                top_cat = df_cat.sort_values(col_rank, ascending=True).tail(10)
+                top_cat['Label'] = top_cat[col_rank].apply(fmt_func)
+                
+                fig_p = px.bar(
+                    top_cat, x=col_rank, y='Kategori_Paket', 
+                    orientation='h', text='Label', 
+                    title=f"🔥 Top 10 Kategori Tertinggi",
+                    template='plotly_white',
+                    color_discrete_sequence=[color_top]
+                )
+                fig_p.update_traces(textposition='outside')
+                fig_p.update_layout(yaxis_title="", xaxis_title="")
                 st.plotly_chart(fig_p, use_container_width=True)
-            with c2:
-                top_tk = df_filt.groupby('Folder_Asal')['Omset_Paket'].sum().reset_index().sort_values('Omset_Paket').tail(10)
-                top_tk['Label'] = top_tk['Omset_Paket'].apply(format_singkat_id)
-                fig_t = px.bar(top_tk, x='Omset_Paket', y='Folder_Asal', orientation='h', text='Label', title="Top 10 Toko")
+            
+            with c2: # Worst Kategori
+                worst_cat = df_cat.sort_values(col_rank, ascending=True).head(10)
+                worst_cat['Label'] = worst_cat[col_rank].apply(fmt_func)
+                
+                fig_w = px.bar(
+                    worst_cat, x=col_rank, y='Kategori_Paket', 
+                    orientation='h', text='Label', 
+                    title=f"❄️ Bottom 10 Kategori Terendah",
+                    template='plotly_white',
+                    color_discrete_sequence=['#c0392b'] # Merah
+                )
+                fig_w.update_traces(textposition='outside')
+                fig_w.update_layout(yaxis_title="", xaxis_title="")
+                st.plotly_chart(fig_w, use_container_width=True)
+
+            st.markdown("---")
+
+            # --- BAGIAN 2: TOKO ---
+            st.markdown(f"#### 🏪 Analisis Toko (by {rank_mode})")
+            
+            # Agregasi Data Toko
+            df_toko = df_filt.groupby('Folder_Asal')[col_rank].sum().reset_index()
+
+            c3, c4 = st.columns(2)
+
+            with c3: # Top Toko
+                top_tk = df_toko.sort_values(col_rank, ascending=True).tail(10)
+                top_tk['Label'] = top_tk[col_rank].apply(fmt_func)
+                
+                fig_t = px.bar(
+                    top_tk, x=col_rank, y='Folder_Asal', 
+                    orientation='h', text='Label', 
+                    title=f"🏆 Top 10 Toko Terbaik",
+                    template='plotly_white',
+                    color_discrete_sequence=['#27ae60'] # Hijau
+                )
+                fig_t.update_traces(textposition='outside')
+                fig_t.update_layout(yaxis_title="Toko", xaxis_title="")
                 st.plotly_chart(fig_t, use_container_width=True)
+
+            with c4: # Worst Toko
+                worst_tk = df_toko.sort_values(col_rank, ascending=True).head(10)
+                worst_tk['Label'] = worst_tk[col_rank].apply(fmt_func)
+                
+                fig_wt = px.bar(
+                    worst_tk, x=col_rank, y='Folder_Asal', 
+                    orientation='h', text='Label', 
+                    title=f"⚠️ Bottom 10 Toko Terendah",
+                    template='plotly_white',
+                    color_discrete_sequence=['#e67e22'] # Oranye
+                )
+                fig_wt.update_traces(textposition='outside')
+                fig_wt.update_layout(yaxis_title="Toko", xaxis_title="")
+                st.plotly_chart(fig_wt, use_container_width=True)
 
         with subtab4:
             st.subheader("Detail Data")
