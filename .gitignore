@@ -7,3 +7,4 @@ data-mesin/
 .streamlit/secrets.toml
 *.xlsx
 *.json
+notebooks/
