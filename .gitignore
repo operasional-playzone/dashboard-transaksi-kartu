@@ -8,3 +8,4 @@ data-mesin/
 *.xlsx
 *.json
 notebooks/
+output/
