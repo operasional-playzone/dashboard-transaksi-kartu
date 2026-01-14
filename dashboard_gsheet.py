@@ -19,9 +19,16 @@ st.set_page_config(
 
 # ================= 2. KONFIGURASI LOGIN & ENV =================
 # ... (BAGIAN LOGIN TETAP SAMA, TIDAK PERLU DIUBAH) ...
-load_dotenv()
-ENV_USER = os.getenv("DASHBOARD_USER", "admin")
-ENV_PASS = os.getenv("DASHBOARD_PASS", "admin123")
+# --- KODE BARU (PASTE INI) ---
+# Prioritas 1: Ambil dari Streamlit Secrets (untuk Cloud)
+if "DASHBOARD_USER" in st.secrets:
+    ENV_USER = st.secrets["DASHBOARD_USER"]
+    ENV_PASS = st.secrets["DASHBOARD_PASS"]
+# Prioritas 2: Ambil dari .env (untuk Lokal)
+else:
+    load_dotenv()
+    ENV_USER = os.getenv("DASHBOARD_USER", "admin")
+    ENV_PASS = os.getenv("DASHBOARD_PASS", "admin123")
 
 USERS = {ENV_USER: ENV_PASS}
 
