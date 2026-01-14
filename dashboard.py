@@ -114,7 +114,13 @@ def load_data_kartu():
 @st.cache_data
 def load_data_mesin():
     try:
-        df = pd.read_excel("CLEAN_DATA_MESIN_FINAL.xlsx")
+        # UPDATE FILE PATH
+        df = pd.read_excel("dashboard_in_scope_compact.xlsx")
+        
+        # RENAME Center_MAPPED -> Center (Agar kompatibel dengan kode visualisasi)
+        if 'Center_MAPPED' in df.columns:
+            df.rename(columns={'Center_MAPPED': 'Center'}, inplace=True)
+
         df['Tanggal'] = pd.to_datetime(df['Tanggal'])
         df['Jumlah Diaktifkan'] = pd.to_numeric(df['Jumlah Diaktifkan'], errors='coerce').fillna(0)
         df['Kredit yg Digunakan'] = pd.to_numeric(df['Kredit yg Digunakan'], errors='coerce').fillna(0)
@@ -136,7 +142,6 @@ def load_data_mesin():
                 df[c] = df[c].astype(str).str.strip()
 
         # --- FILTER EXCLUSION (Hapus Data Kiddieland) ---
-        # Data ini dihapus sebelum masuk ke proses apapun di dashboard
         exclusions = [
             'KIDDIE LAND', 
             'KIDDIE LAND 1 JAM', 
@@ -211,7 +216,7 @@ else:
 # ================= 6. LAYOUT UTAMA =================
 st.title("📊 RAMAYANA ANALYTICS DASHBOARD")
 
-# Main Tabs (Updated: Removed Recommendation from Main, moved to Mesin Subtab)
+# Main Tabs
 tab_kartu_main, tab_mesin_main, tab_corr_main = st.tabs([
     "💳 Dashboard Omset Kartu",
     "🎮 Dashboard Mesin",
@@ -288,7 +293,7 @@ with tab_kartu_main:
             else:
                 st.info("Data 2024/2025 tidak tersedia.")
 
-       # --- SUBTAB 3 (KARTU) ---
+        # --- SUBTAB 3 (KARTU - UPDATED) ---
         with subtab3:
             st.subheader("Peringkat Performa")
             
@@ -421,7 +426,6 @@ with tab_mesin_main:
             st.dataframe(df_m.groupby('Center')[['Jumlah Diaktifkan','Kredit yg Digunakan']].sum().reset_index(), use_container_width=True)
         st.markdown("---")
 
-        # UPDATE: Tambahkan Subtab Rekomendasi (Index 5)
         subtab_m1, subtab_m2, subtab_m3, subtab_m4, subtab_m5, subtab_m6 = st.tabs([
             "📈 Tren & Performa", 
             "⚖️ Komparasi 2024 vs 2025", 
