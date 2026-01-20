@@ -12,7 +12,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 root_folder = r"\\?\C:\Users\ACER\Documents\Dokumen\Magang Ramayana\2026_06_01_Dashboard Kartu\raw_data"
 
 # 2. Nama File Output
-output_file = "DETAIL_PAKET_TRANSAKSI_GABUNGAN.xlsx"
+output_file = "DETAIL_PAKET_TRANSAKSI_GABUNGAN_V2.xlsx"
 
 # 3. Mapping Angka -> Nama Bulan
 map_angka_ke_bulan = {

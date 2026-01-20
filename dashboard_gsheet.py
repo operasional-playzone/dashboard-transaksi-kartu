@@ -114,35 +114,39 @@ def get_gspread_client():
     )
     return gspread.authorize(credentials)
 
-# Fungsi Load Data Kartu (Cached Data)
+# Fungsi Load Data Kartu (Updated & Fixed)
 @st.cache_data(ttl=600)
 def load_data_kartu():
     try:
         client = get_gspread_client()
-        # Buka sheet berdasarkan URL
         sh = client.open_by_url(URL_KARTU)
-        # Ambil worksheet pertama (index 0)
         worksheet = sh.get_worksheet(0)
-        # Ambil semua data
         data = worksheet.get_all_records()
         
         # Buat DataFrame
         df = pd.DataFrame(data)
         
-        # --- CLEANING & FORMATTING ---
-        # Hapus baris kosong jika ada
-        df = df[df['Tanggal'] != '']
+        # --- 1. CLEANING TANGGAL (FIX UTAMA) ---
+        # Paksa konversi ke datetime. Jika error (misal '########'), ubah jadi NaT (Not a Time)
+        df['Tanggal'] = pd.to_datetime(df['Tanggal'], errors='coerce')
         
-        # Konversi Tipe Data
-        df['Tanggal'] = pd.to_datetime(df['Tanggal'])
+        # Hapus baris yang Tanggal-nya NaT (kosong/error)
+        df = df.dropna(subset=['Tanggal'])
         
-        # Bersihkan karakter non-numerik (jika ada koma/titik dari format sheet)
+        # --- 2. CLEANING NUMERIK (Omset & Frekuensi) ---
         for col in ['Omset_Paket', 'Frekuensi']:
-            if df[col].dtype == object:
-                df[col] = df[col].astype(str).str.replace('.', '').str.replace(',', '.')
-            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+            if col in df.columns:
+                # Ubah ke string dulu, bersihkan titik/koma, lalu ke angka
+                if df[col].dtype == object:
+                    # Hapus spasi dan titik (jika titik adalah pemisah ribuan)
+                    # Ganti koma dengan titik (jika koma adalah pemisah desimal, atau sesuaikan)
+                    # Asumsi format Indonesia: 1.000.000 (titik = ribuan)
+                    df[col] = df[col].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
+                
+                # Konversi ke numeric, error jadi 0
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
         
-        # Kolom Waktu Tambahan
+        # --- 3. KOLOM WAKTU TAMBAHAN ---
         df['Tahun'] = df['Tanggal'].dt.year.astype(str)
         df['Bulan_Urut'] = df['Tanggal'].dt.month
         df['Bulan_Key'] = df['Tanggal'].dt.to_period('M').astype(str)
@@ -153,6 +157,7 @@ def load_data_kartu():
         }
         df['Nama_Bulan'] = df['Bulan_Urut'].map(map_bulan_indo)
 
+        # --- 4. CLEANING STRING ---
         str_cols = ['Folder_Asal', 'Nama_Toko_Internal', 'Tipe_Grup', 'Kategori_Paket', 'Nominal_Grup', 'Paket']
         for c in str_cols:
             if c in df.columns:
