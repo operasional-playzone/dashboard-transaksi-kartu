@@ -276,8 +276,13 @@ with tab_kartu_main:
                 val25 = df_yearly[df_yearly['Tahun']=='2025']['Omset_Paket'].sum() if '2025' in df_yearly['Tahun'].values else 0
                 growth = ((val25 - val24) / val24) * 100 if val24 > 0 else 0
                 
+                # --- PERBAIKAN FORMAT LABEL ---
+                # 1. Buat kolom Label menggunakan helper function 'format_label_chart'
+                df_yearly['Label'] = df_yearly['Omset_Paket'].apply(format_label_chart)
+
+                # 2. Gunakan text='Label' (bukan text_auto)
                 fig_total = px.bar(
-                    df_yearly, x='Tahun', y='Omset_Paket', text_auto='.2s',
+                    df_yearly, x='Tahun', y='Omset_Paket', text='Label',
                     title=f'Growth: {growth:.2f}%',
                     color='Tahun', color_discrete_map={'2024': '#bdc3c7', '2025': '#27ae60'}
                 )
