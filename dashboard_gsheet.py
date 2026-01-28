@@ -102,18 +102,14 @@ def load_data_kartu():
         data = worksheet.get_all_records()
         df = pd.DataFrame(data)
 
-        # 1. Hapus Duplikat
         df.drop_duplicates(inplace=True)
 
-        # 2. Rename Kolom
         if 'tOmset_Paket' in df.columns:
             df.rename(columns={'tOmset_Paket': 'Omset_Paket'}, inplace=True)
             
-        # 3. Cleaning Tanggal
         df['Tanggal'] = pd.to_datetime(df['Tanggal'], errors='coerce')
         df = df.dropna(subset=['Tanggal'])
         
-        # 4. Cleaning Numerik
         for col in ['Omset_Paket', 'Frekuensi']:
             if col in df.columns:
                 if df[col].dtype == object:
@@ -122,9 +118,8 @@ def load_data_kartu():
             else:
                 df[col] = 0
         
-        # 5. Waktu & Filter Tahun (Strict 2024-2025)
         df['Tahun'] = df['Tanggal'].dt.year.astype(str)
-        df = df[df['Tahun'].isin(['2024', '2025'])] # <--- FILTER WAJIB AGAR DATA BENAR
+        df = df[df['Tahun'].isin(['2024', '2025'])] # Filter Strict
         
         df['Bulan_Urut'] = df['Tanggal'].dt.month
         df['Bulan_Key'] = df['Tanggal'].dt.to_period('M').astype(str)
@@ -135,7 +130,6 @@ def load_data_kartu():
         }
         df['Nama_Bulan'] = df['Bulan_Urut'].map(map_bulan_indo)
 
-        # 6. String Strip
         str_cols = ['Folder_Asal', 'Nama_Toko_Internal', 'Tipe_Grup', 'Kategori_Paket', 'Nominal_Grup', 'Paket']
         for c in str_cols:
             if c in df.columns:
@@ -175,9 +169,8 @@ def load_data_mesin():
             else:
                 df[col] = 0
         
-        # Waktu & Filter Tahun (Strict 2024-2025)
         df['Tahun'] = df['Tanggal'].dt.year.astype(str)
-        df = df[df['Tahun'].isin(['2024', '2025'])] # <--- FILTER WAJIB
+        df = df[df['Tahun'].isin(['2024', '2025'])] # Filter Strict
         
         df['Bulan_Urut'] = df['Tanggal'].dt.month
         df['Bulan_Key'] = df['Tanggal'].dt.to_period('M').astype(str)
@@ -245,10 +238,12 @@ else:
 # ================= 6. LAYOUT UTAMA =================
 st.title("📊 RAMAYANA ANALYTICS DASHBOARD")
 
-tab_kartu_main, tab_mesin_main, tab_corr_main = st.tabs([
+# --- MENAMBAHKAN TAB 'PENJELASAN TAMBAHAN' ---
+tab_kartu_main, tab_mesin_main, tab_corr_main, tab_help_main = st.tabs([
     "💳 Omset Kartu",
     "🎮 Dashboard Mesin",
-    "🔗 Analisis Korelasi"
+    "🔗 Analisis Korelasi",
+    "ℹ️ Penjelasan Tambahan"
 ])
 
 # ================= TAB 1: KARTU =================
@@ -273,12 +268,10 @@ with tab_kartu_main:
         with subtab1:
             c_left, c_right = st.columns(2)
             
-            # Chart 1: Total Omset per Tahun (Bar)
             with c_left:
                 st.subheader("Total Omset Tahunan")
                 df_yearly = df_filt.groupby('Tahun')['Omset_Paket'].sum().reset_index()
                 
-                # Hitung Growth
                 val24 = df_yearly[df_yearly['Tahun']=='2024']['Omset_Paket'].sum() if '2024' in df_yearly['Tahun'].values else 0
                 val25 = df_yearly[df_yearly['Tahun']=='2025']['Omset_Paket'].sum() if '2025' in df_yearly['Tahun'].values else 0
                 growth = ((val25 - val24) / val24) * 100 if val24 > 0 else 0
@@ -290,7 +283,6 @@ with tab_kartu_main:
                 )
                 st.plotly_chart(fig_total, use_container_width=True)
 
-            # Chart 2: Tren Bulanan (Line)
             with c_right:
                 st.subheader("Tren Omset Bulanan")
                 df_trend = df_filt.groupby(['Tahun', 'Bulan_Urut', 'Nama_Bulan'])['Omset_Paket'].sum().reset_index()
@@ -309,32 +301,49 @@ with tab_kartu_main:
             fig_pie = px.pie(df_pie, values='Omset_Paket', names='Folder_Asal', hole=0.4)
             st.plotly_chart(fig_pie, use_container_width=True)
 
-        # --- SUBTAB 2: PERINGKAT ---
+        # --- SUBTAB 2: PERINGKAT (DENGAN WORST 10) ---
         with subtab2:
-            st.subheader("Peringkat Performa")
+            st.subheader("Peringkat Performa: Top & Worst")
             rank_mode = st.radio("Urutkan Berdasarkan:", ['Total Omset', 'Jumlah Transaksi'], horizontal=True)
             col_rank = 'Omset_Paket' if rank_mode == 'Total Omset' else 'Frekuensi'
             fmt_func = format_label_chart if rank_mode == 'Total Omset' else format_id
 
-            col1, col2 = st.columns(2)
+            st.markdown("---")
+            st.markdown("### 📦 Analisis Kategori Paket")
+            c1, c2 = st.columns(2)
             
-            # Top 10 Kategori
-            with col1:
-                st.markdown("**🏆 Top 10 Kategori Paket**")
-                df_cat = df_filt.groupby('Kategori_Paket')[col_rank].sum().reset_index().sort_values(col_rank, ascending=True).tail(10)
-                df_cat['Label'] = df_cat[col_rank].apply(fmt_func)
-                fig_cat = px.bar(df_cat, x=col_rank, y='Kategori_Paket', orientation='h', text='Label', color_discrete_sequence=['#2980b9'])
-                st.plotly_chart(fig_cat, use_container_width=True)
+            df_cat = df_filt.groupby('Kategori_Paket')[col_rank].sum().reset_index()
+            
+            with c1:
+                df_cat_top = df_cat.sort_values(col_rank, ascending=True).tail(10)
+                df_cat_top['Label'] = df_cat_top[col_rank].apply(fmt_func)
+                fig_cat_t = px.bar(df_cat_top, x=col_rank, y='Kategori_Paket', orientation='h', text='Label', title="🏆 Top 10 Kategori", color_discrete_sequence=['#2980b9'])
+                st.plotly_chart(fig_cat_t, use_container_width=True)
 
-            # Top 10 Toko
-            with col2:
-                st.markdown("**🏪 Top 10 Toko**")
-                df_toko = df_filt.groupby('Folder_Asal')[col_rank].sum().reset_index().sort_values(col_rank, ascending=True).tail(10)
-                df_toko['Label'] = df_toko[col_rank].apply(fmt_func)
-                fig_toko = px.bar(df_toko, x=col_rank, y='Folder_Asal', orientation='h', text='Label', color_discrete_sequence=['#27ae60'])
-                st.plotly_chart(fig_toko, use_container_width=True)
+            with c2:
+                df_cat_worst = df_cat.sort_values(col_rank, ascending=False).tail(10)
+                df_cat_worst['Label'] = df_cat_worst[col_rank].apply(fmt_func)
+                fig_cat_w = px.bar(df_cat_worst, x=col_rank, y='Kategori_Paket', orientation='h', text='Label', title="⚠️ Worst 10 Kategori", color_discrete_sequence=['#c0392b'])
+                st.plotly_chart(fig_cat_w, use_container_width=True)
 
-        # --- SUBTAB 3: DATA ---
+            st.markdown("---")
+            st.markdown("### 🏪 Analisis Toko (Store)")
+            c3, c4 = st.columns(2)
+            
+            df_toko = df_filt.groupby('Folder_Asal')[col_rank].sum().reset_index()
+
+            with c3:
+                df_toko_top = df_toko.sort_values(col_rank, ascending=True).tail(10)
+                df_toko_top['Label'] = df_toko_top[col_rank].apply(fmt_func)
+                fig_toko_t = px.bar(df_toko_top, x=col_rank, y='Folder_Asal', orientation='h', text='Label', title="🏆 Top 10 Toko", color_discrete_sequence=['#27ae60'])
+                st.plotly_chart(fig_toko_t, use_container_width=True)
+
+            with c4:
+                df_toko_worst = df_toko.sort_values(col_rank, ascending=False).tail(10)
+                df_toko_worst['Label'] = df_toko_worst[col_rank].apply(fmt_func)
+                fig_toko_w = px.bar(df_toko_worst, x=col_rank, y='Folder_Asal', orientation='h', text='Label', title="⚠️ Worst 10 Toko", color_discrete_sequence=['#e67e22'])
+                st.plotly_chart(fig_toko_w, use_container_width=True)
+
         with subtab3:
             st.dataframe(df_filt)
     else:
@@ -358,7 +367,6 @@ with tab_mesin_main:
         
         sub_m1, sub_m2, sub_m3, sub_m4 = st.tabs(["📈 Tren & Performa", "🏆 Peringkat", "🔥 Heatmap & Utilitas", "💡 Efisiensi"])
 
-        # --- SUBTAB M1: TREN ---
         with sub_m1:
             st.subheader("Tren Aktivitas Bulanan")
             y_metric = st.selectbox("Metrik", ['Jumlah Diaktifkan', 'Kredit yg Digunakan'])
@@ -373,19 +381,45 @@ with tab_mesin_main:
             fig_tm.update_traces(textposition="top center")
             st.plotly_chart(fig_tm, use_container_width=True)
 
-        # --- SUBTAB M2: PERINGKAT ---
         with sub_m2:
-            c1, c2 = st.columns(2)
             rank_m_met = st.radio("Ranking By", ['Jumlah Diaktifkan', 'Kredit yg Digunakan'], horizontal=True)
             
-            # Top 10 Mesin
-            df_rank_m = df_m.groupby('GT_FINAL')[rank_m_met].sum().reset_index().sort_values(rank_m_met, ascending=True).tail(10)
-            df_rank_m['Label'] = df_rank_m[rank_m_met].apply(format_id)
+            st.markdown("---")
+            st.markdown("### 🎮 Analisis Mesin (Game)")
+            c1, c2 = st.columns(2)
             
-            fig_top_m = px.bar(df_rank_m, x=rank_m_met, y='GT_FINAL', orientation='h', text='Label', title="🔥 Top 10 Mesin")
-            st.plotly_chart(fig_top_m, use_container_width=True)
+            df_rank_m = df_m.groupby('GT_FINAL')[rank_m_met].sum().reset_index()
 
-        # --- SUBTAB M3: HEATMAP ---
+            with c1:
+                df_top_m = df_rank_m.sort_values(rank_m_met, ascending=True).tail(10)
+                df_top_m['Label'] = df_top_m[rank_m_met].apply(format_id)
+                fig_top_m = px.bar(df_top_m, x=rank_m_met, y='GT_FINAL', orientation='h', text='Label', title="🔥 Top 10 Mesin", color_discrete_sequence=['#2980b9'])
+                st.plotly_chart(fig_top_m, use_container_width=True)
+
+            with c2:
+                df_worst_m = df_rank_m.sort_values(rank_m_met, ascending=False).tail(10)
+                df_worst_m['Label'] = df_worst_m[rank_m_met].apply(format_id)
+                fig_worst_m = px.bar(df_worst_m, x=rank_m_met, y='GT_FINAL', orientation='h', text='Label', title="❄️ Worst 10 Mesin", color_discrete_sequence=['#c0392b'])
+                st.plotly_chart(fig_worst_m, use_container_width=True)
+
+            st.markdown("---")
+            st.markdown("### 🏪 Analisis Toko (Berdasarkan Mesin)")
+            c3, c4 = st.columns(2)
+            
+            df_rank_toko = df_m.groupby('Center')[rank_m_met].sum().reset_index()
+
+            with c3:
+                df_top_toko = df_rank_toko.sort_values(rank_m_met, ascending=True).tail(10)
+                df_top_toko['Label'] = df_top_toko[rank_m_met].apply(format_id)
+                fig_top_t = px.bar(df_top_toko, x=rank_m_met, y='Center', orientation='h', text='Label', title="🏆 Top 10 Toko (Aktivitas Mesin)", color_discrete_sequence=['#27ae60'])
+                st.plotly_chart(fig_top_t, use_container_width=True)
+
+            with c4:
+                df_worst_toko = df_rank_toko.sort_values(rank_m_met, ascending=False).tail(10)
+                df_worst_toko['Label'] = df_worst_toko[rank_m_met].apply(format_id)
+                fig_worst_t = px.bar(df_worst_toko, x=rank_m_met, y='Center', orientation='h', text='Label', title="⚠️ Worst 10 Toko (Aktivitas Mesin)", color_discrete_sequence=['#e67e22'])
+                st.plotly_chart(fig_worst_t, use_container_width=True)
+
         with sub_m3:
             st.subheader("🔥 Heatmap Utilitas Mesin")
             hm_metric = st.selectbox("Metrik Heatmap", ['Jumlah Diaktifkan', 'Kredit yg Digunakan'])
@@ -393,18 +427,15 @@ with tab_mesin_main:
             df_heat = df_m.groupby(['Center', 'GT_FINAL'])[hm_metric].sum().reset_index()
             heat_mx = df_heat.pivot(index='Center', columns='GT_FINAL', values=hm_metric).fillna(0)
             
-            # Normalisasi %
             heat_mx_norm = heat_mx.div(heat_mx.sum(axis=1), axis=0) * 100
             
             fig_h = px.imshow(heat_mx_norm, aspect="auto", color_continuous_scale="YlOrRd", labels=dict(color="Utilitas (%)"))
             fig_h.update_layout(height=600)
             st.plotly_chart(fig_h, use_container_width=True)
 
-        # --- SUBTAB M4: EFISIENSI ---
         with sub_m4:
             st.header("💡 Matriks Efisiensi (Omset Toko vs Kredit Mesin)")
             if not df_filt.empty:
-                # Join Data
                 df_k_agg = df_filt.groupby(['Folder_Asal', 'Bulan_Key'])['Omset_Paket'].sum().reset_index()
                 df_k_agg.rename(columns={'Folder_Asal': 'Center'}, inplace=True)
                 df_m_agg = df_m.groupby(['Center', 'GT_FINAL', 'Bulan_Key'])[['Jumlah Diaktifkan', 'Kredit yg Digunakan']].sum().reset_index()
@@ -417,7 +448,6 @@ with tab_mesin_main:
                         'Jumlah Diaktifkan': 'sum'
                     }).reset_index()
                     
-                    # Klasifikasi
                     df_eff['Ratio'] = df_eff['Omset_Paket'] / df_eff['Kredit yg Digunakan']
                     q33 = df_eff['Ratio'].quantile(0.33)
                     q67 = df_eff['Ratio'].quantile(0.67)
@@ -466,3 +496,63 @@ with tab_corr_main:
             st.warning("Data tidak sinkron (Nama Toko beda?).")
     else:
         st.info("Data belum lengkap.")
+
+# ================= TAB 4: PENJELASAN TAMBAHAN =================
+with tab_help_main:
+    st.title("📘 Panduan Membaca Analisis Lanjutan")
+    st.markdown("---")
+
+    st.subheader("1. 🔥 Heatmap Utilitas Mesin (Peta Persebaran Aktivitas)")
+    st.markdown("""
+    **Fungsi Utama:** Memvisualisasikan intensitas penggunaan mesin di berbagai lokasi (Center) dalam satu tampilan kisi (grid) warna.
+
+    **Cara Membaca:**
+    * **Sumbu Y (Vertikal):** Nama Toko/Center (misal: Cengkareng, Cipanas).
+    * **Sumbu X (Horizontal):** Nama Mesin/Game (misal: Danz Base, Maximum Tune).
+    * **Warna:**
+        * 🟥 **Merah Tua/Gelap:** Aktivitas sangat tinggi (Mesin Primadona).
+        * 🟨 **Kuning/Terang:** Aktivitas sedang atau rendah.
+    * **Normalisasi (%):** Data dinormalisasi menjadi persentase agar toko kecil dan toko besar bisa dibandingkan secara adil (proporsi).
+
+    **Insight Bisnis:**
+    * **Alokasi Aset:** Mengetahui mesin mana yang "mati" di satu toko tapi "ramai" di toko lain, sehingga bisa dilakukan rotasi unit (mutasi).
+    * **Preferensi Lokal:** Mengidentifikasi selera pasar per daerah (misal: Daerah A suka game balapan, Daerah B suka game tembak-tembakan).
+    """)
+    
+
+    st.markdown("---")
+
+    st.subheader("2. 💡 Matriks Efisiensi (Omset Toko vs. Kredit Mesin)")
+    st.markdown("""
+    **Fungsi Utama:** Mengevaluasi apakah "biaya" (kredit/listrik/maintenance) yang dikeluarkan oleh sebuah mesin sebanding dengan kontribusinya terhadap keramaian/omset toko. Ini menggunakan *Scatter Plot* (Diagram Tebar).
+
+    **Cara Membaca (Kuadran):** Analisis ini membagi mesin ke dalam 3 status berdasarkan rasio `Total Omset Toko / Total Kredit Mesin`:
+    * 🟢 **HIGH Efficiency (Rekomendasi):** Mesin yang menggunakan kredit wajar/sedikit, tetapi berada di toko dengan omset tinggi. Ini adalah mesin yang efisien dan menguntungkan.
+    * 🟡 **NORMAL:** Mesin dengan performa standar.
+    * 🔴 **LOW Efficiency (Evaluasi):** Mesin yang menyedot banyak kredit (banyak dimainkan), tetapi omset tokonya rendah.
+        * *Indikasi:* Mungkin harga per kredit terlalu murah, ada kecurangan (free play), atau mesin ramai tapi tidak menghasilkan pembelian kartu baru.
+
+    **Insight Bisnis:**
+    * **Optimasi Harga:** Mesin di zona merah mungkin perlu dinaikkan harga per kreditnya (SWIPE price).
+    * **Investigasi:** Mendeteksi anomali di mana mesin sangat aktif bekerja tapi uang tidak masuk ke kasir.
+    """)
+    
+
+    st.markdown("---")
+
+    st.subheader("3. 🔗 Korelasi Aktivitas Mesin vs. Omset Kartu")
+    st.markdown("""
+    **Fungsi Utama:** Mengukur seberapa kuat hubungan antara **Keramaian Mesin** (Jumlah main/Kredit) dengan **Uang Masuk** (Omset Paket). Menggunakan *Pearson Correlation Coefficient*.
+
+    **Cara Membaca:**
+    * **Trendline (Garis Miring):**
+        * Jika garis naik ke kanan atas ↗️: **Korelasi Positif**. Artinya, semakin banyak mesin dimainkan, semakin besar omset toko. (Ini kondisi ideal).
+        * Jika garis datar atau turun: Tidak ada hubungan atau hubungan terbalik.
+    * **Nilai Korelasi (r):**
+        * **Mendekati +1.0:** Hubungan sangat kuat. Aktivitas mesin adalah pendorong utama omset.
+        * **Mendekati 0:** Tidak ada hubungan. (Misal: Omset tinggi karena jualan makanan/minuman, bukan karena mesin).
+
+    **Insight Bisnis:**
+    * **Validasi Model Bisnis:** Membuktikan bahwa strategi memperbanyak mesin atau kredit gratis benar-benar memancing orang untuk *top-up* uang (Omset).
+    * **Forecasting:** Jika kita menargetkan kenaikan omset sekian Rupiah, kita bisa memprediksi berapa minimal aktivitas mesin yang harus dicapai.
+    """)
