@@ -44,16 +44,24 @@ def gabung_file_mesin(folder_path):
             # ================= BACA EXCEL =================
             df = pd.read_excel(file_full_path)
 
-            # ================= KUNCI KOLOM NUMERIK =================
+            # ================= KUNCI KOLOM NUMERIK (CLEANING) =================
+            # 1. Jumlah Diaktifkan
             if 'Jumlah Diaktifkan' in df.columns:
                 df['Jumlah Diaktifkan'] = pd.to_numeric(
                     df['Jumlah Diaktifkan'], errors='coerce'
-                )
+                ).fillna(0)
 
+            # 2. Kredit yg Digunakan
             if 'Kredit yg Digunakan' in df.columns:
                 df['Kredit yg Digunakan'] = pd.to_numeric(
                     df['Kredit yg Digunakan'], errors='coerce'
-                )
+                ).fillna(0)
+            
+            # 3. Bonus yg Digunakan (BARU DITAMBAHKAN)
+            if 'Bonus yg Digunakan' in df.columns:
+                df['Bonus yg Digunakan'] = pd.to_numeric(
+                    df['Bonus yg Digunakan'], errors='coerce'
+                ).fillna(0)
 
             # ================= TAMBAH METADATA =================
             df['Bulan'] = bulan
@@ -78,6 +86,13 @@ def gabung_file_mesin(folder_path):
         print(f"📊 Total Baris Data: {len(final_df)}")
         print("📅 Bulan:", final_df['Bulan'].unique())
         print("📅 Tahun:", final_df['Tahun'].unique())
+        
+        # Cek sekilas kolom baru
+        if 'Bonus yg Digunakan' in final_df.columns:
+            total_bonus = final_df['Bonus yg Digunakan'].sum()
+            print(f"💰 Total Bonus Terbaca: {total_bonus:,.0f}")
+        else:
+            print("⚠️ Kolom 'Bonus yg Digunakan' tidak ditemukan di file manapun.")
 
     else:
         print("\n⚠️ Tidak ada file yang berhasil diproses.")
