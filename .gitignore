@@ -9,3 +9,5 @@ data-mesin/
 *.json
 notebooks/
 output/
+env/
+upload_to_gsheet.py

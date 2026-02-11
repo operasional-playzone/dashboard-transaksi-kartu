@@ -83,7 +83,7 @@ def create_sidebar_filter_options(df, col_name):
 # ================= 4. LOAD DATA =================
 @st.cache_data(ttl=600)
 def load_data_kartu():
-    file_path = os.path.join("output", "CLEAN_DATA_TRANSAKSI_FINAL_V3.xlsx")
+    file_path = os.path.join("output", "CLEAN_DATA_TRANSAKSI_FINAL_V4.xlsx")
     try:
         df = pd.read_excel(file_path)
         if 'Tanggal' in df.columns:
@@ -119,7 +119,7 @@ def load_data_kartu():
 
 @st.cache_data(ttl=600)
 def load_data_mesin():
-    file_path = os.path.join("output", "dashboard_in_scope_compact_v2.xlsx")
+    file_path = os.path.join("output", "dashboard_in_scope_compact_v3.xlsx")
     try:
         df = pd.read_excel(file_path)
         if 'Center_MAPPED' in df.columns:
