@@ -9,10 +9,10 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 # ================= KONFIGURASI UTAMA =================
 # 1. Folder Sumber Data (Raw Data)
-root_folder = r"\\?\C:\Users\ACER\Documents\Dokumen\Magang Ramayana\2026_06_01_Dashboard Kartu\raw_data"
+root_folder = r"\\?\C:\Users\ACER\Documents\Dokumen\Magang Ramayana\2026_01_06_Dashboard Kartu\raw_data"
 
 # 2. Nama File Output
-output_file = "DETAIL_PAKET_TRANSAKSI_GABUNGAN_V2.xlsx"
+output_file = "DETAIL_PAKET_TRANSAKSI_GABUNGAN_V3.xlsx"
 
 # 3. Mapping Angka -> Nama Bulan
 map_angka_ke_bulan = {
